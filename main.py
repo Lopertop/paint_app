@@ -16,6 +16,10 @@ def main():
     color = (0, 0, 255)
     mode = 'pencil'
     
+    active_text = ""
+    text_pos = None
+    is_typing = False
+    
     current_width = 5
     widths = {
         pygame.K_F1: 2,
@@ -25,7 +29,7 @@ def main():
     
     drawing = False
     start_pos = None
-    end_pos = None
+    last_pos = None
     
     while True:
         screen.fill((200, 200, 200))
@@ -37,7 +41,29 @@ def main():
             if event.type == pygame.QUIT:
                 return
             
-            if event.type == pygame.KEYDOWN:
+            if is_typing:
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_RETURN:
+                        ShapeDrawer.draw_text(canva, active_text, text_pos, color)
+                        active_text = ""
+                        is_typing = False
+                    elif event.key == pygame.K_ESCAPE:
+                        active_text = ""
+                        is_typing = False
+                    elif event.key == pygame.K_BACKSPACE:
+                        active_text = active_text[:-1]
+                elif event.type == pygame.TEXTINPUT:
+                    active_text += event.text
+                continue
+                
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_s:
+                    mods = pygame.key.get_mods()
+                    if mods & pygame.KMOD_CTRL:
+                        ShapeDrawer.save_canva(canva)
+                    else:
+                        mode = 'square'
+                
                 if event.key in widths:
                     current_width = widths[event.key]
             
@@ -46,7 +72,8 @@ def main():
                     pygame.K_e: 'erase', pygame.K_c: 'circle',
                     pygame.K_r: 'rectangle', pygame.K_s: 'square',
                     pygame.K_t: 'right_triangle', pygame.K_q: 'equilateral',
-                    pygame.K_d: 'rhombus'
+                    pygame.K_d: 'rhombus', pygame.K_f: 'fill',
+                    pygame.K_m: 'text'
                 }
                 
                 if event.key in keys: mode = keys[event.key]
@@ -56,10 +83,19 @@ def main():
                 if event.key == pygame.K_3: color = (255, 0, 0)
                 
             if event.type == pygame.MOUSEBUTTONDOWN:
-                drawing = True
-                start_pos = event.pos
-                last_pos = event.pos
-            
+                if mode == 'text':
+                    if active_text:
+                        ShapeDrawer.draw_text(canva, active_text, text_pos, color)
+                    is_typing = True
+                    text_pos = event.pos
+                    active_text = ""
+                if mode == 'fill':
+                    ShapeDrawer.flood_fill(canva, event.pos, color)
+                else:
+                    drawing = True
+                    start_pos = event.pos
+                    last_pos = event.pos
+                
             if event.type == pygame.MOUSEBUTTONUP:
                 if drawing and mode == 'line':
                     ShapeDrawer.draw_line(canva, color, start_pos, event.pos, current_width)
@@ -86,6 +122,9 @@ def main():
             elif mode == 'erase':
                 ShapeDrawer.erase(canva, last_pos, current_pos, current_width)
                 last_pos = current_pos
+        
+        if is_typing:
+            ShapeDrawer.draw_text(screen, active_text + "|", text_pos, color)
             
         pygame.display.flip()
         clock.tick(60)                    
